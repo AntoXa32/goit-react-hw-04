@@ -1,46 +1,61 @@
-import { useState, useEffect } from "react";
-import initialcontacts from "../../contacts.json";
-import ContactList from "../ContactList/ContactList";
-import SearchBox from "../SearchBox/SearchBox";
-import ContactForm from "../ContactForm/ContactForm";
-import { nanoid } from "nanoid";
+import { fetchImages } from "../../pages_api";
+import { useEffect, useState } from "react";
+import ImageGallery from "../ImageGallery/ImageGallery";
+import SearchBar from "../SearchBar/SearchBar";
+import ErrorMessage from "../ErrorMessage/ErrorMessage";
+import LoadMoreBtn from "../LoadMoreBtn/LoadMoreBtn";
+import Loader from "../Loader/Loader";
 
 export default function App() {
-  const [contacts, setContacts] = useState(() => {
-    const savedContacts = localStorage.getItem("contacts");
-    return savedContacts ? JSON.parse(savedContacts) : initialcontacts;
-  });
-  const [filter, setFilter] = useState("");
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [page, setPage] = useState(1);
+  const [topic, setTopic] = useState("");
+
+  const handleSearch = async (newTopic) => {
+    setImages([]);
+    setPage(1);
+    setTopic(newTopic);
+  };
+
+  const handleLoadMore = () => {
+    setPage(page + 1);
+  };
 
   useEffect(() => {
-    localStorage.setItem("contacts", JSON.stringify(contacts));
-  }, [contacts]);
+    if (topic === "") {
+      return;
+    }
 
-  const addContact = (name, number) => {
-    const newContact = {
-      id: nanoid(),
-      name,
-      number,
-    };
-    setContacts([...contacts, newContact]);
-  };
+    async function getImages() {
+      try {
+        setLoading(true);
+        setError(false);
+        const images = await fetchImages(topic, page);
+        setImages((prevImages) => {
+          return [...prevImages, ...images];
+        });
+      } catch (error) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const filterName = contacts.filter((contact) =>
-    contact.name.toLowerCase().includes(filter.toLowerCase())
-  );
-
-  const deleteContact = (contactId) => {
-    setContacts((prevContacts) => {
-      return prevContacts.filter((contact) => contact.id !== contactId);
-    });
-  };
+    getImages();
+  }, [page, topic]);
 
   return (
-    <div>
-      <h1>Phonebook</h1>
-      <ContactForm addContact={addContact} />
-      <SearchBox value={filter} onFilter={setFilter} />
-      <ContactList contacts={filterName} onDelete={deleteContact} />
-    </div>
+    <>
+      <SearchBar onSearch={handleSearch} />
+      {error && <ErrorMessage />}
+      {images.length > 0 && <ImageGallery images={images} />}
+      {loading && <Loader />}
+
+      {images.length > 0 && !loading && (
+        <LoadMoreBtn onClick={handleLoadMore} />
+      )}
+    </>
   );
 }
