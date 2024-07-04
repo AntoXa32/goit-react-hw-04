@@ -10,7 +10,7 @@ export const fetchImages = async (topic, currentPage = 1) => {
     params: {
       query: topic,
       page: currentPage,
-      per_page: 5,
+      per_page: 12,
     },
   });
   return res.data.results;
